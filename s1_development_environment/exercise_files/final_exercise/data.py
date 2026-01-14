@@ -8,7 +8,7 @@ DATA_PATH = "data/corruptmnist"
 
 
 def corrupt_mnist() -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
-    """Return train and test dataloaders for corrupt MNIST."""
+    """Return train and test datasets for corrupt MNIST."""
     train_images, train_target = [], []
     for i in range(6):
         train_images.append(torch.load(f"{DATA_PATH}/train_images_{i}.pt"))
