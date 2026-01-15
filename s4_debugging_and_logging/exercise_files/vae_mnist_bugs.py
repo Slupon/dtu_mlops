@@ -48,12 +48,14 @@ class Encoder(nn.Module):
         h_ = torch.relu(self.FC_input(x))
         mean = self.FC_mean(h_)
         log_var = self.FC_var(h_)
-        z = self.reparameterization(mean, log_var)
+        z = self.reparameterization(mean, torch.exp(log_var))
+        #z = self.reparameterization(mean, log_var)  Math bug fixed here: should use exp(log_var) to get var
         return z, mean, log_var
 
     def reparameterization(self, mean, var):
         """Reparameterization trick to sample z values."""
-        epsilon = torch.randn(*var.shape)
+        epsilon = torch.randn(*var.shape, device=mean.device)
+        #epsilon = torch.randn(*var.shape) --> Device Bug fixed here
         return mean + var * epsilon
 
 
@@ -63,8 +65,9 @@ class Decoder(nn.Module):
     def __init__(self, latent_dim, hidden_dim, output_dim) -> None:
         super().__init__()
         self.FC_hidden = nn.Linear(latent_dim, hidden_dim)
-        self.FC_output = nn.Linear(latent_dim, output_dim)
-
+        self.FC_output = nn.Linear(hidden_dim, output_dim)
+        #self.FC_output = nn.Linear(latent_dim, output_dim) --> Shape Bug fixed here 
+        #did not fail because I was not using GPU (only CPU in Pytorch)
     def forward(self, x):
         """Forward pass of the decoder module."""
         h = torch.relu(self.FC_hidden(x))
@@ -115,6 +118,7 @@ for epoch in range(epochs):
         x = x.to(DEVICE)
 
         x_hat, mean, log_var = model(x)
+        optimizer.zero_grad()  #training bug fixed here: zero_grad should be before backward
         loss = loss_function(x, x_hat, mean, log_var)
 
         overall_loss += loss.item()
@@ -141,12 +145,12 @@ with torch.no_grad():
         x_hat, _, _ = model(x)
         break
 
-save_image(x.view(batch_size, 1, 28, 28), "orig_data.png")
-save_image(x_hat.view(batch_size, 1, 28, 28), "reconstructions.png")
+save_image(x.view(batch_size, 1, 28, 28), "s4_debugging_and_logging/exercise_files/orig_data.png")
+save_image(x_hat.view(batch_size, 1, 28, 28), "s4_debugging_and_logging/exercise_files/reconstructions.png")
 
 # Generate samples
 with torch.no_grad():
     noise = torch.randn(batch_size, latent_dim).to(DEVICE)
     generated_images = decoder(noise)
 
-save_image(generated_images.view(batch_size, 1, 28, 28), "generated_sample.png")
+save_image(generated_images.view(batch_size, 1, 28, 28), "s4_debugging_and_logging/exercise_files/generated_sample.png")
